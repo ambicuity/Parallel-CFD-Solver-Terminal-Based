@@ -63,19 +63,19 @@ The solver uses a three-step projection method:
 #### Step 1: Velocity Prediction
 Compute intermediate velocity `u*` without pressure:
 ```
-u* = uⁿ + Δt[-（u·∇)u + (1/Re)∇²u]
+u* = u^n + dt * [-(u·grad)u + (1/Re)*laplacian(u)]
 ```
 
 #### Step 2: Pressure Correction
 Solve the pressure Poisson equation:
 ```
-∇²p = (1/Δt)∇·u*
+laplacian(p) = (1/dt) * div(u*)
 ```
 
 #### Step 3: Velocity Projection
 Project to divergence-free velocity field:
 ```
-uⁿ⁺¹ = u* - Δt·∇p
+u^(n+1) = u* - dt * grad(p)
 ```
 
 ### Spatial Discretization

@@ -110,39 +110,66 @@ void printHelp(const char* program_name) {
 Arguments parseArguments(int argc, char* argv[]) {
     Arguments args;
     
+    auto parseDouble = [](const char* str, const std::string& arg_name) -> double {
+        try {
+            return std::stod(str);
+        } catch (const std::exception& e) {
+            std::cerr << "Error: Invalid value for " << arg_name << ": " << str << "\n";
+            std::exit(1);
+        }
+    };
+    
+    auto parseULong = [](const char* str, const std::string& arg_name) -> size_t {
+        try {
+            return std::stoul(str);
+        } catch (const std::exception& e) {
+            std::cerr << "Error: Invalid value for " << arg_name << ": " << str << "\n";
+            std::exit(1);
+        }
+    };
+    
+    auto parseInt = [](const char* str, const std::string& arg_name) -> int {
+        try {
+            return std::stoi(str);
+        } catch (const std::exception& e) {
+            std::cerr << "Error: Invalid value for " << arg_name << ": " << str << "\n";
+            std::exit(1);
+        }
+    };
+    
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         
         if (arg == "--help" || arg == "-h") {
             args.show_help = true;
         } else if (arg == "--nx" && i + 1 < argc) {
-            args.nx = std::stoul(argv[++i]);
+            args.nx = parseULong(argv[++i], "--nx");
         } else if (arg == "--ny" && i + 1 < argc) {
-            args.ny = std::stoul(argv[++i]);
+            args.ny = parseULong(argv[++i], "--ny");
         } else if (arg == "--Lx" && i + 1 < argc) {
-            args.Lx = std::stod(argv[++i]);
+            args.Lx = parseDouble(argv[++i], "--Lx");
         } else if (arg == "--Ly" && i + 1 < argc) {
-            args.Ly = std::stod(argv[++i]);
+            args.Ly = parseDouble(argv[++i], "--Ly");
         } else if (arg == "--Re" && i + 1 < argc) {
-            args.Re = std::stod(argv[++i]);
+            args.Re = parseDouble(argv[++i], "--Re");
         } else if (arg == "--dt" && i + 1 < argc) {
-            args.dt = std::stod(argv[++i]);
+            args.dt = parseDouble(argv[++i], "--dt");
         } else if (arg == "--t_end" && i + 1 < argc) {
-            args.t_end = std::stod(argv[++i]);
+            args.t_end = parseDouble(argv[++i], "--t_end");
         } else if (arg == "--pressure_iter" && i + 1 < argc) {
-            args.pressure_max_iter = std::stoi(argv[++i]);
+            args.pressure_max_iter = parseInt(argv[++i], "--pressure_iter");
         } else if (arg == "--pressure_tol" && i + 1 < argc) {
-            args.pressure_tol = std::stod(argv[++i]);
+            args.pressure_tol = parseDouble(argv[++i], "--pressure_tol");
         } else if (arg == "--omega" && i + 1 < argc) {
-            args.omega = std::stod(argv[++i]);
+            args.omega = parseDouble(argv[++i], "--omega");
         } else if (arg == "--problem" && i + 1 < argc) {
             args.problem = argv[++i];
         } else if (arg == "--lid_vel" && i + 1 < argc) {
-            args.lid_velocity = std::stod(argv[++i]);
+            args.lid_velocity = parseDouble(argv[++i], "--lid_vel");
         } else if (arg == "--inflow_vel" && i + 1 < argc) {
-            args.inflow_velocity = std::stod(argv[++i]);
+            args.inflow_velocity = parseDouble(argv[++i], "--inflow_vel");
         } else if (arg == "--output_interval" && i + 1 < argc) {
-            args.output_interval = std::stoi(argv[++i]);
+            args.output_interval = parseInt(argv[++i], "--output_interval");
         } else if (arg == "--export") {
             args.export_csv = true;
         } else if (arg == "--output_dir" && i + 1 < argc) {
@@ -150,7 +177,7 @@ Arguments parseArguments(int argc, char* argv[]) {
         } else if (arg == "--quiet") {
             args.verbose = false;
         } else if (arg == "--threads" && i + 1 < argc) {
-            args.num_threads = std::stoi(argv[++i]);
+            args.num_threads = parseInt(argv[++i], "--threads");
         } else if (arg == "--benchmark") {
             args.benchmark = true;
         } else {
@@ -344,11 +371,19 @@ void runBenchmark(const Arguments& args) {
     std::cout << "  │      1      │ " << std::setw(16) << std::fixed << std::setprecision(4) 
               << baseline_time << " │    1.00x    │     100.0%      │\n";
     
+    double best_speedup = 1.0;
+    int best_threads = 1;
+    
     for (int threads : thread_counts) {
         std::cout << "  Running with " << threads << " threads...\n";
         double multi_time = runSimulation(args, threads, false);
         double speedup = baseline_time / multi_time;
         double efficiency = speedup / threads * 100.0;
+        
+        if (speedup > best_speedup) {
+            best_speedup = speedup;
+            best_threads = threads;
+        }
         
         std::cout << "  │ " << std::setw(5) << threads << "       │ " 
                   << std::setw(16) << std::fixed << std::setprecision(4) << multi_time 
@@ -358,15 +393,10 @@ void runBenchmark(const Arguments& args) {
     
     std::cout << "  └─────────────┴──────────────────┴─────────────┴─────────────────┘\n\n";
     
-    // Summary
-    if (!thread_counts.empty()) {
-        double final_time = runSimulation(args, thread_counts.back(), false);
-        double max_speedup = baseline_time / final_time;
-        
-        std::cout << "  Summary:\n";
-        std::cout << "    Maximum speedup achieved: " << std::setprecision(2) << max_speedup << "x\n";
-        std::cout << "    Using " << thread_counts.back() << " threads\n\n";
-    }
+    // Summary using tracked best values
+    std::cout << "  Summary:\n";
+    std::cout << "    Maximum speedup achieved: " << std::setprecision(2) << best_speedup << "x\n";
+    std::cout << "    Using " << best_threads << " threads\n\n";
 }
 
 int main(int argc, char* argv[]) {

@@ -1,0 +1,24 @@
+# Build artifacts
+obj/
+*.o
+*.a
+
+# Executable
+cfd_solver
+
+# Output files
+output/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CodeQL artifacts
+_codeql_detected_source_root
